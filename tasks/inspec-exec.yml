@@ -1,0 +1,38 @@
+---
+
+- name: attribute pre-tasks
+  when: inspec_vars_list is defined
+  block:
+    - set_fact:
+        inspec_attr_path: /tmp/inspec-attr-{{ inventory_hostname }}-{{ ansible_date_time.iso8601_basic }}.yml
+        inspec_attr_list: "{% for v in inspec_vars_list %}{{v.name}} : {{v.value}}\n{% endfor %}"
+
+    - name: dump vars
+      changed_when: false
+      delegate_to: localhost
+      copy:
+        content: '{{ inspec_attr_list }}'
+        dest: '{{ inspec_attr_path }}'
+
+- set_fact:
+    inspec_attr_arg: "{{ '--attrs %s'|format(inspec_attr_path) if inspec_vars_list is defined else '' }}"
+
+- name: set inspec profiles path
+  set_fact:
+    inspec_profile_dir: '{{ inspec_imported_role_path }}/inspec-profile'
+  when: inspec_profile_dir is undefined
+
+- name: run tests - linux target
+  import_tasks: linux.yml
+  when: ansible_os_family != 'Windows'
+
+- name: run tests - windows target
+  import_tasks: windows.yml
+  when: ansible_os_family == 'Windows'
+
+- name: remove temp inspec attribute file
+  changed_when: false
+  when: inspec_attr_path is defined
+  file:
+    path: '{{ inspec_attr_path }}'
+    state: absent

@@ -1,0 +1,27 @@
+---
+
+- name: inspec exec
+  delegate_to: localhost
+  changed_when: false
+  environment:
+    SSH_AUTH_SOCK: '{{ inventory_dir }}/ssh_auth.sock'
+  command: >
+    inspec exec {{ inspec_profile_dir }}
+      -b ssh
+      --host {{ inventory_hostname }}
+      --user {{ ansible_user_id }}
+      {{ inspec_attr_arg }}
+  no_log: true
+  ignore_errors: yes
+  register: inspec_out
+  
+- name: inspec exec - stdout
+  debug:
+    var: inspec_out.stdout_lines
+  when: inspec_out.rc == 0 or inspec_out.rc == 101
+
+- name: inspec exec debug - stderr
+  debug:
+    var: inspec_out.stdout_lines
+  when: inspec_out.rc != 0 and inspec_out.rc != 101
+  failed_when: true
